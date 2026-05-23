@@ -1,0 +1,65 @@
+# Claude model switcher
+CLAUDE_MODELS_DIR="$HOME/path/to/claude-model-switcher"
+LITELLM_BIN="$CLAUDE_MODELS_DIR/.venv/bin/litellm"
+
+if [ -f "$CLAUDE_MODELS_DIR/.env" ]; then
+  source "$CLAUDE_MODELS_DIR/.env"
+fi
+
+# Claude Code - dzwiek + notyfikacja po zakonczeniu
+claude() {
+  command claude "$@"
+  osascript -e 'display notification "Claude czeka na akceptacje" with title "Claude Code" sound name "Glass"'
+}
+
+# Wymagane prywatne zmienne:
+# export ZAI_API_KEY="..."
+# export DEEPSEEK_API_KEY="..."
+
+claude-glm() {
+  if [ -z "$ZAI_API_KEY" ]; then
+    echo "Brak ZAI_API_KEY"
+    return 1
+  fi
+
+  export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
+  export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
+  export ANTHROPIC_DEFAULT_HAIKU_MODEL="glm-5.1"
+  export ANTHROPIC_DEFAULT_SONNET_MODEL="glm-5-turbo"
+  export ANTHROPIC_DEFAULT_OPUS_MODEL="glm-5.1"
+
+  echo "Tryb GLM aktywowany"
+  claude "$@"
+}
+
+claude-deepseek() {
+  if [ -z "$DEEPSEEK_API_KEY" ]; then
+    echo "Brak DEEPSEEK_API_KEY"
+    return 1
+  fi
+
+  pgrep -f "litellm.*config_deepseek" > /dev/null || (
+    nohup "$LITELLM_BIN" --config ~/.litellm/config_deepseek.yaml --port 4002 > /tmp/litellm_deepseek.log 2>&1 &
+    sleep 5
+  )
+
+  export ANTHROPIC_BASE_URL="http://localhost:4002"
+  export ANTHROPIC_AUTH_TOKEN="sk-local-deepseek"
+  unset ANTHROPIC_DEFAULT_HAIKU_MODEL
+  unset ANTHROPIC_DEFAULT_SONNET_MODEL
+  unset ANTHROPIC_DEFAULT_OPUS_MODEL
+
+  echo "Tryb DeepSeek aktywowany"
+  claude "$@"
+}
+
+claude-native() {
+  unset ANTHROPIC_BASE_URL
+  unset ANTHROPIC_AUTH_TOKEN
+  unset ANTHROPIC_DEFAULT_HAIKU_MODEL
+  unset ANTHROPIC_DEFAULT_SONNET_MODEL
+  unset ANTHROPIC_DEFAULT_OPUS_MODEL
+
+  echo "Tryb natywny Claude aktywowany"
+  claude "$@"
+}

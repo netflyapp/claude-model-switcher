@@ -1,0 +1,11 @@
+.env
+.env.*
+!.env.example
+.venv/
+
+# Local secrets and machine-specific config
+config_*.yaml
+!config_*.example.yaml
+
+# macOS
+.DS_Store
